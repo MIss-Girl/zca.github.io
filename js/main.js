@@ -1,138 +1,204 @@
-// Dean Attali / Beautiful Jekyll 2016
+require([], function (){
 
-var main = {
-
-  bigImgEl : null,
-  numImgs : null,
-
-  init : function() {
-    // Shorten the navbar after scrolling a little bit down
-    $(window).scroll(function() {
-        if ($(".navbar").offset().top > 50) {
-            $(".navbar").addClass("top-nav-short");
-        } else {
-            $(".navbar").removeClass("top-nav-short");
-        }
-    });
-    
-    // On mobile, hide the avatar when expanding the navbar menu
-    $('#main-navbar').on('show.bs.collapse', function () {
-      $(".navbar").addClass("top-nav-expanded");
-    });
-    $('#main-navbar').on('hidden.bs.collapse', function () {
-      $(".navbar").removeClass("top-nav-expanded");
-    });
-	
-    // On mobile, when clicking on a multi-level navbar menu, show the child links
-    $('#main-navbar').on("click", ".navlinks-parent", function(e) {
-      var target = e.target;
-      $.each($(".navlinks-parent"), function(key, value) {
-        if (value == target) {
-          $(value).parent().toggleClass("show-children");
-        } else {
-          $(value).parent().removeClass("show-children");
-        }
-      });
-    });
-    
-    // Ensure nested navbar menus are not longer than the menu header
-    var menus = $(".navlinks-container");
-    if (menus.length > 0) {
-      var navbar = $("#main-navbar ul");
-      var fakeMenuHtml = "<li class='fake-menu' style='display:none;'><a></a></li>";
-      navbar.append(fakeMenuHtml);
-      var fakeMenu = $(".fake-menu");
-
-      $.each(menus, function(i) {
-        var parent = $(menus[i]).find(".navlinks-parent");
-        var children = $(menus[i]).find(".navlinks-children a");
-        var words = [];
-        $.each(children, function(idx, el) { words = words.concat($(el).text().trim().split(/\s+/)); });
-        var maxwidth = 0;
-        $.each(words, function(id, word) {
-          fakeMenu.html("<a>" + word + "</a>");
-          var width =  fakeMenu.width();
-          if (width > maxwidth) {
-            maxwidth = width;
-          }
-        });
-        $(menus[i]).css('min-width', maxwidth + 'px')
-      });
-
-      fakeMenu.remove();
-    }        
-    
-    // show the big header image	
-    main.initImgs();
-  },
-  
-  initImgs : function() {
-    // If the page was large images to randomly select from, choose an image
-    if ($("#header-big-imgs").length > 0) {
-      main.bigImgEl = $("#header-big-imgs");
-      main.numImgs = main.bigImgEl.attr("data-num-img");
-
-          // 2fc73a3a967e97599c9763d05e564189
-	  // set an initial image
-	  var imgInfo = main.getImgInfo();
-	  var src = imgInfo.src;
-	  var desc = imgInfo.desc;
-  	  main.setImg(src, desc);
-  	
-	  // For better UX, prefetch the next image so that it will already be loaded when we want to show it
-  	  var getNextImg = function() {
-	    var imgInfo = main.getImgInfo();
-	    var src = imgInfo.src;
-	    var desc = imgInfo.desc;		  
-	    
-		var prefetchImg = new Image();
-  		prefetchImg.src = src;
-		// if I want to do something once the image is ready: `prefetchImg.onload = function(){}`
-		
-  		setTimeout(function(){
-                  var img = $("<div></div>").addClass("big-img-transition").css("background-image", 'url(' + src + ')');
-  		  $(".intro-header.big-img").prepend(img);
-  		  setTimeout(function(){ img.css("opacity", "1"); }, 50);
-		  
-		  // after the animation of fading in the new image is done, prefetch the next one
-  		  //img.one("transitioned webkitTransitionEnd oTransitionEnd MSTransitionEnd", function(){
-		  setTimeout(function() {
-		    main.setImg(src, desc);
-			img.remove();
-  			getNextImg();
-		  }, 1000); 
-  		  //});		
-  		}, 6000);
-  	  };
-	  
-	  // If there are multiple images, cycle through them
-	  if (main.numImgs > 1) {
-  	    getNextImg();
-	  }
+    var isMobileInit = false;
+    var loadMobile = function(){
+        require([yiliaConfig.rootUrl + 'js/mobile.js'], function(mobile){
+            mobile.init();
+            isMobileInit = true;
+        })
     }
-  },
-  
-  getImgInfo : function() {
-  	var randNum = Math.floor((Math.random() * main.numImgs) + 1);
-    var src = main.bigImgEl.attr("data-img-src-" + randNum);
-	var desc = main.bigImgEl.attr("data-img-desc-" + randNum);
-	
-	return {
-	  src : src,
-	  desc : desc
-	}
-  },
-  
-  setImg : function(src, desc) {
-	$(".intro-header.big-img").css("background-image", 'url(' + src + ')');
-	if (typeof desc !== typeof undefined && desc !== false) {
-	  $(".img-desc").text(desc).show();
-	} else {
-	  $(".img-desc").hide();  
-	}
-  }
-};
+    var isPCInit = false;
+    var loadPC = function(){
+        require([yiliaConfig.rootUrl + 'js/pc.js'], function(pc){
+            pc.init();
+            isPCInit = true;
+        })
+    }
 
-// 2fc73a3a967e97599c9763d05e564189
+    var browser = {
+        versions: function() {
+        var u = window.navigator.userAgent;
+        return {
+            trident: u.indexOf('Trident') > -1, //IE内核
+            presto: u.indexOf('Presto') > -1, //opera内核
+            webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+            gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+            mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+            ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+            android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+            iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+            iPad: u.indexOf('iPad') > -1, //是否为iPad
+            webApp: u.indexOf('Safari') == -1 ,//是否为web应用程序，没有头部与底部
+            weixin: u.indexOf('MicroMessenger') == -1 //是否为微信浏览器
+            };
+        }()
+    }
 
-document.addEventListener('DOMContentLoaded', main.init);
+    $(window).bind("resize", function() {
+        if (isMobileInit && isPCInit) {
+            $(window).unbind("resize");
+            return;
+        }
+        var w = $(window).width();
+        if (w >= 700) {
+            loadPC();
+        } else {
+            loadMobile();
+        }
+    });
+
+    if(!!browser.versions.mobile || $(window).width() < 800){
+        loadMobile();
+    } else {
+        loadPC();
+    }
+
+    resetTags = function(){
+        var tags = $(".tagcloud a");
+        for(var i = 0; i < tags.length; i++){
+            var num = Math.floor(Math.random()*7);
+            tags.eq(i).addClass("color" + num);
+        }
+        $(".article-category a:nth-child(-n+2)").attr("class", "color0");
+    }
+
+    // fancyBox
+    if(!!yiliaConfig.fancybox){
+        require([yiliaConfig.fancybox_js], function(pc){
+            var isFancy = $(".isFancy");
+            if(isFancy.length != 0){
+                var imgArr = $(".article-inner img");
+                for(var i=0,len=imgArr.length;i<len;i++){
+                    var src = imgArr.eq(i).attr("src");
+                    var title = imgArr.eq(i).attr("alt");
+                    if(typeof(title) == "undefined"){
+                        var title = imgArr.eq(i).attr("title");
+                    }
+                    var width = imgArr.eq(i).attr("width");
+                    var height = imgArr.eq(i).attr("height");
+                    imgArr.eq(i).replaceWith("<a href='"+src+"' title='"+title+"' rel='fancy-group' class='fancy-ctn fancybox'><img src='"+src+"' width="+width+" height="+height+" title='"+title+"' alt='"+title+"'></a>");
+                }
+                $(".article-inner .fancy-ctn").fancybox({ type: "image" });
+            }
+        })
+    }
+
+    // Animate on Homepage
+    if(!!yiliaConfig.animate) {
+        if(!!yiliaConfig.isHome) {
+            require([yiliaConfig.scrollreveal], function (ScrollReveal) {
+                var animationNames = [
+                "pulse", "fadeIn","fadeInRight", "flipInX", "lightSpeedIn","rotateInUpLeft", "slideInUp","zoomIn",
+                ],
+                len = animationNames.length,
+                randomAnimationName = animationNames[Math.ceil(Math.random() * len) - 1];
+
+                // Fallback (CSS3 keyframe, requestAnimationFrame)
+                if (!window.requestAnimationFrame) {
+                    $('.body-wrap > article').css({opacity: 1});
+                    if (navigator.userAgent.match(/Safari/i)) {
+                        function showArticle(){
+                            $(".article").each(function(){
+                                if( $(this).offset().top <= $(window).scrollTop()+$(window).height() && !($(this).hasClass('show')) ) {
+                                    $(this).removeClass("hidden").addClass("show");
+                                    $(this).addClass("is-hiddened");
+                                } else {
+                                    if(!$(this).hasClass("is-hiddened")) {
+                                        $(this).addClass("hidden");
+                                    }
+                                }
+                            })
+                        }
+                        $(window).on('scroll', function(){
+                            showArticle();
+                        });
+                        showArticle();
+                    }
+                    return;
+                }
+
+                var animateScope = ".body-wrap > article";
+                var $firstArticle = $(".body-wrap > article:first-child");
+                if ($firstArticle.height() > $(window).height()) {
+                    var animateScope = ".body-wrap > article:not(:first-child)";
+                    $firstArticle.css({opacity: 1});
+                }
+                ScrollReveal({
+                    duration: 0,
+                    afterReveal: function (domEl) {
+                        $(domEl).addClass('animated ' + randomAnimationName).css({opacity: 1})
+                    }
+                }).reveal(animateScope);
+            })
+        } else {
+            $('.body-wrap > article').css({opacity: 1});
+        }
+    }
+
+    // TOC
+    if (yiliaConfig.toc) {
+        require(['toc'], function(){ })
+    }
+
+    // Random Color 边栏顶部随机颜色
+    var colorList = ["#6da336", "#ff945c", "#66CC66", "#99CC99", "#CC6666", "#76becc", "#c99979", "#918597", "#4d4d4d"];
+    var id = Math.ceil(Math.random()*(colorList.length-1));
+    // PC
+    $("#container .left-col .overlay").css({"background-color": colorList[id],"opacity": .3});
+    // Mobile
+    $("#container #mobile-nav .overlay").css({"background-color": colorList[id],"opacity": .7});
+
+    // Table
+    $("table").wrap("<div class='table-area'></div>");
+
+    // Hide Comment Button
+    $(document).ready(function() {
+        if ($("#comments").length < 1) {
+            $("#scroll > a:nth-child(2)").hide();
+        }
+    })
+
+    // Hide Labels
+    if(yiliaConfig.isArchive || yiliaConfig.isTag || yiliaConfig.isCategory) {
+        $(document).ready(function() {
+            $("#footer").after("<button class='hide-labels'>TAGS</button>");
+            $(".hide-labels").click(function() {
+                $(".article-info").toggle(200);
+            })
+        })
+    }
+
+    // Task lists in markdown
+    $('ul > li').each(function() {
+        var taskList = {
+            field: this.textContent.substring(0, 2),
+            check: function(str) {
+                var re = new RegExp(str);
+                return this.field.match(re);
+            }
+        }
+
+        var string = ["[ ]", ["[x]", "checked"]];
+        var checked = taskList.check(string[1][0]);
+        var unchecked = taskList.check(string[0]);
+
+        var $current = $(this);
+        function update(str, check) {
+            var click = ["disabled", ""];
+            $current.html($current.html().replace(
+              str, "<input type='checkbox' " + check + " " + click[1] + " >")
+            )
+        }
+
+        if (checked || unchecked) {
+            this.classList.add("task-list");
+            if (checked) {
+                update(string[1][0], string[1][1]);
+                this.classList.add("check");
+            } else {
+                update(string[0], "");
+            }
+        }
+    })
+
+})
